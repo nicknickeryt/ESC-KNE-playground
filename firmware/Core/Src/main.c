@@ -19,7 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
-#include "spi.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -52,7 +51,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+int a = 0;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -67,7 +66,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  int i = 2137;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -88,23 +87,75 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_SPI1_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
   MX_TIM14_Init();
   MX_TIM17_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  int n = 0;
 
+
+  /*
+  * Configuration Defines
+  */
+  #define LSB_FIRST 0
+  #define DELAY_CYCLES 1
+
+  /*
+  *  Hardware Definitions for Pin Setting and Resetting
+  *
+  *  This driver does not initialize the pins.
+  */
+
+  #define CS_LOW  GPIOB->BSRR = GPIO_BSRR_BR6
+  #define CS_HIGH GPIOB->BSRR = GPIO_BSRR_BS6
+
+  #define MOSI_LOW  GPIOB->BSRR = GPIO_BSRR_BR3
+  #define MOSI_HIGH GPIOB->BSRR = GPIO_BSRR_BS3
+
+  #define SCK_LOW  GPIOB->BSRR = GPIO_BSRR_BR5
+  #define SCK_HIGH GPIOB->BSRR = GPIO_BSRR_BS5
+
+  //Returns non-zero if MISO is set, 0 if non set
+  #define MISO_SET (GPIOB->IDR & GPIO_IDR_ID4)
+
+  #define DELAY for (uint32_t i = 0; i < DELAY_CYCLES; i++) __NOP()
+
+  uint32_t spi_bitbang_master_tx_rx_byte(uint8_t data) {
+  uint32_t rx_data = 0;
+  #if LSB_FIRST
+    for (uint32_t i = 0; i < 8; i++) {
+      if (data & (1 << i)) {
+  #else
+    for (int i = 31; i >= 0; i--) {
+      if (data & (1 << i)) {
+  #endif
+        MOSI_HIGH;
+      } else {
+        MOSI_LOW;
+      }
+      SCK_HIGH;
+      DELAY;
+      if (MISO_SET)
+        rx_data |= 1 << i;
+      SCK_LOW;
+      DELAY;
+    }
+    return rx_data;
+}
+
+  uint32_t rx = spi_bitbang_master_tx_rx_byte(0x02);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  HAL_Delay(1000);
+	  n++;
     /* USER CODE END WHILE */
 
-  
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
